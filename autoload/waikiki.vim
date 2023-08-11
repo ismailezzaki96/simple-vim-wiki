@@ -132,6 +132,11 @@ endfun
 
 " waikiki#FollowLink {{{2
 function! waikiki#FollowLink(...) abort
+    if ! exists("g:mwikiEnterLinkStack")
+        let g:mwikiEnterLinkStack = []
+    endif
+    let g:mwikiEnterLinkStack = add(g:mwikiEnterLinkStack, expand("%:p")."@pos".join(getpos("."),","))
+
   let options = a:0 ? a:1 : {}
   let follow  = get(options, 'action', s:follow)
   let create  = get(options, 'create', s:create)
@@ -210,91 +215,14 @@ endfun
 function! waikiki#GoUp(...) abort
   let options     = a:0 ? a:1 : {}
   let action      = get(options, 'action', s:follow)
-  let curpath     = expand('%:p:h')
-  let curtarget   = expand('%:t')
-  let oldpath     = curpath
-  let finaltarget = ''
-  let lvl_dir_up  = 0
-  let move_up     = 0
-
-  "call <Sid>Dbg("curpath, curtarget:", curpath, curtarget)
-
-  if curtarget == s:index
-    if s:IsPathAtWikiRoot(curpath)
-      echo "Already at wiki root."
-      return
-    endif
-    let path = fnamemodify(curpath, ':h')
-    "call <Sid>Dbg("updating path before loop:", path)
-    let lvl_dir_up += 1
-    if path == oldpath
-      return
-    endif
-  else
-    let path = curpath
-  endif
-
-  let nb_iter_left = 32
-  while finaltarget == ''
-    let nb_iter_left -= 1
-    if nb_iter_left == 0
-      echohl ErrorMsg
-      echom "GoUp: Too many recursion."
-      echohl None
-      return
-    endif
-    let target  = s:JoinPath(path, s:index)
-    "call <Sid>Dbg("Testing target:", target)
-    if filereadable(target)
-      let finaltarget = target
-    elseif s:ask_if_noindex
-      let globpath   = s:JoinPath(path, '*')
-      let targetlist = glob(globpath, 1, 1)
-      if empty(targetlist)
-            \ || (len(targetlist) == 1
-            \   && (targetlist[0] == s:JoinPath(path, curtarget)
-            \     || lvl_dir_up == 1 && targetlist[0] == path))
-        " if no candidate, move up and try again
-        let move_up = 1
-      else
-        " let the user choose
-        let target = s:PromptForTarget(
-              \ targetlist + [fnamemodify(path, ':h')],
-              \ {'prompt': 'Choose file:', 'complete': 1}
-              \)
-        if filereadable(target)
-          let finaltarget = target
-        elseif isdirectory(target)
-          let path = target
-          "call <Sid>Dbg("user set path:", path)
-          " user could have entered anything, no point tracking dir lvl
-          let lvl_dir_up = 99
-        else
-          " can't find user choice, just move up
-          let move_up = 1
-        endif
-      endif
+    if exists("g:mwikiEnterLinkStack") && len(g:mwikiEnterLinkStack) != 0
+        let res = split(g:mwikiEnterLinkStack[len(g:mwikiEnterLinkStack)-1], "@pos")
+        execute "edit ".res[0]
+        call setpos(".",split(res[1], ","))
+        unlet g:mwikiEnterLinkStack[len(g:mwikiEnterLinkStack)-1]
     else
-      let move_up = 1
+      echo "Already at wiki root."
     endif
-    if move_up
-      if s:IsPathAtWikiRoot(path)
-        echo "Already at wiki root."
-        return
-      endif
-      let path = fnamemodify(path, ':h')
-      "call <Sid>Dbg("updating path:", path)
-      let lvl_dir_up += 1
-      if path == oldpath
-        echo "Cannot find ".s:index." in upper dirs."
-        return
-      endif
-    endif
-    let move_up = 0
-    let oldpath = path
-  endwhile
-
-  exe action finaltarget
 endfun
 
 " waikiki#Tags {{{2
