@@ -51,15 +51,6 @@ great but overkill for me.
 *Is is subtle, modern and elegant?*  
 As much as an orange life jacket.
 
-Installation
--------------
-Use your favorite method:
-*  [Pathogen][1] - git clone https://github.com/fcpg/vim-waikiki ~/.vim/bundle/vim-waikiki
-*  [NeoBundle][2] - NeoBundle 'fcpg/vim-waikiki'
-*  [Vundle][3] - Plugin 'fcpg/vim-waikiki'
-*  [Plug][4] - Plug 'fcpg/vim-waikiki'
-*  manual - copy all files into your ~/.vim directory
-
 License
 --------
 [Attribution-ShareAlike 4.0 Int.](https://creativecommons.org/licenses/by-sa/4.0/)
