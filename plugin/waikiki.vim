@@ -11,8 +11,6 @@ nnoremap  <silent>  <Plug>(waikikiGoUpSplit)        :call waikiki#GoUp({'action'
 nnoremap  <silent>  <Plug>(waikikiGoUpVSplit)       :call waikiki#GoUp({'action':'vsplit'})<cr>
 nnoremap  <silent>  <Plug>(waikikiNextLink)         :call waikiki#NextLink()<cr>
 nnoremap  <silent>  <Plug>(waikikiPrevLink)         :call waikiki#PrevLink()<cr>
-nnoremap  <silent>  <Plug>(waikikiToggleListItem)   :call waikiki#ToggleListItem()<cr>
-nnoremap  <silent>  <Plug>(waikikiTags)             :call waikiki#Tags()<cr>
 
 if !get(g:, 'waikiki_noauto', 0)
   augroup WaikikiSetup
@@ -22,7 +20,5 @@ if !get(g:, 'waikiki_noauto', 0)
   augroup END
 endif
 
-com! -nargs=? -bar -complete=dir WaikikiTags
-      \ call waikiki#Tags(<f-args>)
 
 let g:waikiki_loaded = 1

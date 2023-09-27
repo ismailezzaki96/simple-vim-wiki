@@ -25,10 +25,6 @@ let s:follow = get(g:, 'waikiki_follow_action', 'edit')
 let s:create = get(g:, 'waikiki_create_action', 'edit')
 let s:ext    = get(g:, 'waikiki_ext', '.md')
 let s:index  = get(g:, 'waikiki_index', 'index'.s:ext)
-let s:todo   = get(g:, 'waikiki_todo', ' ')
-let s:done   = get(g:, 'waikiki_done', 'X')
-let s:wiki_patterns  = get(g:, 'waikiki_wiki_patterns',
-                        \ get(g:, 'waikiki_patterns', []))
 let s:wiki_roots     = get(g:, 'waikiki_wiki_roots',
                         \ get(g:, 'waikiki_roots', []))
 let s:lookup_order   = get(g:, 'waikiki_lookup_order', ['raw', 'ext', 'subdir'])
@@ -54,54 +50,26 @@ function! waikiki#PrevLink() abort
   call search(link_regex, 'b')
 endfun
 
-" waikiki#ToggleListItem {{{2
-function! waikiki#ToggleListItem() abort
-  let line = getline('.')
-  let box  = matchstr(line,
-        \ '\[\%('.s:todo.'\|'.s:done.'\)\]')
-  if box != ""
-    if box =~ s:todo
-      exe printf('s/\[\zs%s\ze\]/%s/', s:todo, s:done)
-      norm! ``
-    elseif box =~ s:done
-      exe printf('s/\[\zs%s\ze\]/%s/', s:done, s:todo)
-      norm! ``
-    endif
-  endif
-endfun
 
 " waikiki#SetupBuffer {{{2
 function! waikiki#SetupBuffer() abort
-  "call <Sid>Dbg("Setting up buffer")
-  if get(g:, 'waikiki_default_maps', 0)
-    nmap  <buffer>  <LocalLeader><Space>  <Plug>(waikikiToggleListItem)
-    nmap  <buffer>  <LocalLeader>n        <Plug>(waikikiNextLink)
-    nmap  <buffer>  <LocalLeader>p        <Plug>(waikikiPrevLink)
-    nmap  <buffer>  <LocalLeader><cr>     <Plug>(waikikiFollowLink)
-    nmap  <buffer>  <LocalLeader>s        <Plug>(waikikiFollowLinkSplit)
-    nmap  <buffer>  <LocalLeader>v        <Plug>(waikikiFollowLinkVSplit)
-    xmap  <buffer>  <LocalLeader><cr>     <Plug>(waikikiFollowLink)
-    xmap  <buffer>  <LocalLeader>s        <Plug>(waikikiFollowLinkSplit)
-    xmap  <buffer>  <LocalLeader>v        <Plug>(waikikiFollowLinkVSplit)
-    nmap  <buffer>  <LocalLeader>u        <Plug>(waikikiGoUp)
-    nmap  <buffer>  <LocalLeader>T        <Plug>(waikikiTags)
-  endif
+  call <Sid>Dbg("Setting up buffer")
 
   setl concealcursor=n
 
   if exists('#Waikiki#User#setup')
-    "call <Sid>Dbg("doauto Waikiki User setup")
+    call <Sid>Dbg("doauto Waikiki User setup")
     doauto <nomodeline> Waikiki User setup
   endif
 endfun
 
 " waikiki#CheckBuffer {{{2
 function! waikiki#CheckBuffer(file) abort
-  if s:IsUnderWikiRoot(a:file) || s:IsMatchingWikiPattern(a:file)
+  if s:IsUnderWikiRoot(a:file)
     call waikiki#SetupBuffer()
     return
   endif
-  "call <Sid>Dbg("nothing to setup")
+  call <Sid>Dbg("nothing to setup")
 endfun
 
 " waikiki#GetCurrentLink {{{2
@@ -113,7 +81,7 @@ function! waikiki#GetCurrentLink() abort
         \ '\%<'.(col('.')+1).'c'.
         \ link_url_regex.
         \ '\%>'.col('.').'c')
-  "call <Sid>Dbg("Current link:", link)
+  call <Sid>Dbg("Current link:", link)
   return link
 endfun
 
@@ -126,16 +94,19 @@ function! waikiki#GetCurrentWord() abort
         \ '\%<'.(col('.')+1).'c'.
         \ word_regex.
         \ '\%>'.col('.').'c')
-  "call <Sid>Dbg("Current word:", link)
+  call <Sid>Dbg("Current word:", link)
   return word
 endfun
 
 " waikiki#FollowLink {{{2
 function! waikiki#FollowLink(...) abort
-    if ! exists("g:mwikiEnterLinkStack")
-        let g:mwikiEnterLinkStack = []
-    endif
-    let g:mwikiEnterLinkStack = add(g:mwikiEnterLinkStack, expand("%:p")."@pos".join(getpos("."),","))
+	if ! s:IsUnderWikiRoot(expand('<afile>:p'))
+		return
+	endif
+	if ! exists("g:mwikiEnterLinkStack")
+		let g:mwikiEnterLinkStack = []
+	endif
+	let g:mwikiEnterLinkStack = add(g:mwikiEnterLinkStack, expand("%:p")."@pos".join(getpos("."),","))
 
   let options = a:0 ? a:1 : {}
   let follow  = get(options, 'action', s:follow)
@@ -148,7 +119,7 @@ function! waikiki#FollowLink(...) abort
   let curpath = expand('%:p:h')
   let targetlist  = []
   let finaltarget = ''
-  "call <Sid>Dbg("name, link: ", name, curlink)
+  call <Sid>Dbg("name, link: ", name, curlink)
 
   " is there a link with a url
   if curlink != ""
@@ -160,7 +131,7 @@ function! waikiki#FollowLink(...) abort
       let finaltarget = isdirectory(abstarget)
             \ ? s:JoinPath(abstarget, s:index)
             \ : abstarget
-      "call <Sid>Dbg("link with path: ", finaltarget)
+      call <Sid>Dbg("link with path: ", finaltarget)
       if filereadable(finaltarget)
         exe follow finaltarget
         return
@@ -173,13 +144,13 @@ function! waikiki#FollowLink(...) abort
       let targetlist = s:GetPossibleTargetsOrderedList(curlink)
       for target in targetlist
         let abstarget = s:JoinPath(curpath, target)
-        "call <Sid>Dbg("trying: ", abstarget)
+        call <Sid>Dbg("trying: ", abstarget)
         if filereadable(abstarget)
           exe follow abstarget
           return
         endif
       endfor
-      "call <Sid>Dbg("all failed.")
+      call <Sid>Dbg("all failed.")
     endif
   endif
 
@@ -201,7 +172,7 @@ function! waikiki#FollowLink(...) abort
     endif
     let nospacetarget = substitute(target, ' ', s:space_replacement, 'g')
     let finaltarget = s:JoinPath(curpath, nospacetarget)
-    "call <Sid>Dbg("nospacetarget, finaltarget:", nospacetarget, finaltarget)
+    call <Sid>Dbg("nospacetarget, finaltarget:", nospacetarget, finaltarget)
     if curlink == ""
       call s:InsertLinkCode(name, nospacetarget)
     endif
@@ -224,56 +195,6 @@ function! waikiki#GoUp(...) abort
       echo "Already at wiki root."
     endif
 endfun
-
-" waikiki#Tags {{{2
-" Arg: dir where to save tags file
-function! waikiki#Tags(...) abort
-  let tagstart = get(g:, 'waikiki_tag_start', ':')
-  let tagend   = get(g:, 'waikiki_tag_end', ':')
-  let tag      = '[a-zA-Z0-9_]+'
-  let ttag     = tag.tagend
-  let blanks   = '[ \t]*'
-  let regex1 = printf('/^%s%s(%s)%s(%s)*%s$/\1/t,tag/i',
-        \ blanks, tagstart, tag, tagend, ttag, blanks)
-  let regex2 = printf('/^%s%s%s(%s)%s(%s)*%s$/\1/t,tag/i',
-        \ blanks, tagstart, ttag, tag, tagend, ttag, blanks)
-  let regex3 = printf('/^%s%s%s%s(%s)%s(%s)*%s$/\1/t,tag/i',
-        \ blanks, tagstart, ttag, ttag, tag, tagend, ttag, blanks)
-  let regex4 = printf('/^%s%s%s%s%s(%s)%s(%s)*%s$/\1/t,tag/i',
-        \ blanks, tagstart, ttag, ttag, ttag, tag, tagend, ttag, blanks)
-  let regex5 = printf('/^%s%s%s%s%s%s(%s)%s(%s)*%s$/\1/t,tag/i',
-        \ blanks, tagstart, ttag, ttag, ttag, ttag, tag, tagend, ttag, blanks)
-  let regex6 = printf('/^%s%s%s%s%s%s%s(%s)%s(%s)*%s$/\1/t,tag/i',
-        \ blanks, tagstart, ttag, ttag, ttag, ttag, ttag, tag, tagend, ttag, blanks)
-
-  let ctags_cmd = join([
-        \ 'ctags',
-        \ '--langdef=waikiki',
-        \ '--langmap=waikiki:'.s:ext,
-        \ '--languages=waikiki',
-        \ '--regex-waikiki='''.regex1.'''',
-        \ '--regex-waikiki='''.regex2.'''',
-        \ '--regex-waikiki='''.regex3.'''',
-        \ '--regex-waikiki='''.regex4.'''',
-        \ '--regex-waikiki='''.regex5.'''',
-        \ '--regex-waikiki='''.regex6.'''',
-        \ '--recurse',
-        \ '--waikiki-kinds=t',
-        \ '.',
-        \])
-  if a:0
-    let ctags_cmd = 'cd '.a:1.' && '.ctags_cmd
-  else
-    let root = s:GetBufferWikiRoot(expand('%'))
-    if root != ""
-      let ctags_cmd = 'cd '.root.' && '.ctags_cmd
-    endif
-  endif
-  "call <Sid>Dbg("running:", ctags_cmd)
-  silent let ctags_out = system(ctags_cmd)
-  "call <Sid>Dbg("output:", ctags_out)
-endfun
-
 
 "------------------------
 " Private Functions {{{1
@@ -298,7 +219,7 @@ function! s:GetPossibleTargetsOrderedList(name) abort
     let target = get(targetdict, type, '')
     call add(targetlist, target)
   endfor
-  "call <Sid>Dbg("Target list:", string(targetlist))
+  call <Sid>Dbg("Target list:", string(targetlist))
   return targetlist
 endfun
 
@@ -339,7 +260,7 @@ function! s:PromptForTarget(choices, ...) abort
             \ : input('path: ')
     endif
   endwhile
-  "call <Sid>Dbg("Chosen target:", target)
+  call <Sid>Dbg("Chosen target:", target)
   return target
 endfun
 
@@ -398,7 +319,7 @@ function! s:IsSubdirOf(subdir, parent) abort
   let nparent   = s:ChompDirSep(a:parent).s:dirsep
   let subdircut = strcharpart(nsubdir, 0, strchars(nparent))
   let is_subdir = (subdircut == nparent)
-  "call <Sid>Dbg("is subdir of:", subdircut, nparent, (is_subdir?"yes":"no"))
+  call <Sid>Dbg("is subdir of:", subdircut, nparent, (is_subdir?"yes":"no"))
   return is_subdir
 endfun
 
@@ -408,19 +329,10 @@ function! s:IsAtDir(dir1, dir2) abort
   let ndir1 = s:ChompDirSep(a:dir1).s:dirsep
   let ndir2 = s:ChompDirSep(a:dir2).s:dirsep
   let is_at_dir = (ndir1 == ndir2)
-  "call <Sid>Dbg("is at dir:", ndir1, ndir2, (is_at_dir?"yes":"no"))
+  call <Sid>Dbg("is at dir:", ndir1, ndir2, (is_at_dir?"yes":"no"))
   return is_at_dir
 endfun
 
-" s:IsMatchingWikiPattern {{{2
-function! s:IsMatchingWikiPattern(file) abort
-  for pat in s:wiki_patterns
-    if a:file =~ pat
-      return 1
-    endif
-  endfor
-  return 0
-endfun
 
 " s:GetBufferWikiRoot {{{2
 function! s:GetBufferWikiRoot(file) abort
